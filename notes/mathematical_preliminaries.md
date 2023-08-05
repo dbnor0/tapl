@@ -91,13 +91,13 @@ E = { (s, s) &isin; S } is by definition the minimal reflexive relation a set ca
 ### 2.2.7
 **Consider the following sequence of sets of pairs:**
 
-**R_0 = R**
+**R(0) = R**
 
-**R_i+1 = R_i &cup; { (s, u) &exist; t, (s, t) &isin; R_i and (t, u) &isin; R_i }**
+**R(i+1) = R(i) &cup; { (s, u) &exist; t, (s, t) &isin; R(i) and (t, u) &isin; R(i) }**
 
-**Show that R+ is the transitive closure for R, where R+ = R_0 &cup; R_1 &cup; ... &cup; R_i**
+**Show that R+ is the transitive closure for R, where R+ = R(0) &cup; R(1) &cup; ... &cup; R(i)**
 
-Given that R_0 = R, we can say that R &subseteq; R+. R may or may not initialy be reflexive. However, through the iterative process (Warshall's algorithm?) defined for R+, we ensure that at each step, the only elements being added to the set are built upon the transitive property, and all possible transitive (s, u) pairs are being added. The process stops once there no longer is any t for which (s, t) and (t, u) exists, which proves R+ is the transitive closure for R. 
+Given that R(0) = R, we can say that R &subseteq; R+. R may or may not initialy be reflexive. However, through the iterative process (Warshall's algorithm?) defined for R+, we ensure that at each step, the only elements being added to the set are built upon the transitive property, and all possible transitive (s, u) pairs are being added. The process stops once there no longer is any t for which (s, t) and (t, u) exists, which proves R+ is the transitive closure for R. 
 
 ### 2.2.8
 **Suppose R is a binary relation on S and P is a predicate on S that is preserved by R.**
@@ -136,3 +136,10 @@ and &forall; i we have P(i) -> P(i + 1)
 
 then &forall; n we have P(n)
 
+the **principle of ordinary induction on natural numbers** and the **principle of complete induction on natural numbers** are equivalent (in the sense that either can be used to prove the other) but are stated differently
+
+both have a base case, however:
+
+ * the former needs to prove a statement for n + 1, if it holds for n
+
+ * the latter needs to prove a statement for n, if it holds for all numbers less than n 

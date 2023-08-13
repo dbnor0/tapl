@@ -35,5 +35,5 @@ depth = \case
   Succ t -> depth t + 1
   Pred t -> depth t + 1
   IsZero t -> depth t
-  If t1 t2 t3 -> foldr' max 0 [depth t1, depth t2, depth t3] + 1
+  If t1 t2 t3 -> foldr' max 0 (depth <$> [t1, t2, t3]) + 1
   t -> 1

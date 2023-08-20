@@ -1,7 +1,9 @@
+
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE LambdaCase #-}
 
-module Exercise.UntypedArithmeticExpressions where
+module Arith.Exercises where
+
 import Data.Foldable
 
 data Term

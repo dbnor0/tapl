@@ -17,6 +17,7 @@ executable tapl
         Arith.Interpreter
         Arith.Parser
         Arith.Syntax
+        UntypedLC.Exercises
         Common.Parser
     build-depends:    
         base ^>=4.16.4.0

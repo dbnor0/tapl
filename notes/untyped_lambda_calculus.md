@@ -283,11 +283,241 @@ isnil = λl. l (λx. λy. fls) tru
 
 `isnil` is similar to `iszro`, except we need to ignore both the `cons` function and its value when returning `fls`.
 
-head = λl. l tru nothing
-
-We're introducing a special `nothing` value to return in case the list is empty, otherwise, we'll return the first variable between the head and the tail of the list, namely the head.
+head = λl. l tru nil
 
 **Finally, write a tail function for this representation of lists**
 
+todo
+
+### Enriching the calculus
+
+Working with actual primitives is sometimes beneficial over using Church encodings.
+Conversions can be defined between the 2 forms.
+
 ### Recursion
 
+The equivalent of the Y combinator in Haskell is `fix`
+
+```haskell
+fix :: (a -> a) -> a
+fix f = f (fix f)
+```
+
+This will infinitely apply a function to itself. Its most useful when applying it to functions that take a 'recurse' function as a parameter and have a base case which does not call it. Despite the function infinitely calling itself _in a vacuum_, due to Haskell's lazy evaluation, the construct will only recurse as far as needed.
+
+Take the factorial function, which can be defined as
+
+`fix (\fact n -> if n == 1 then 1 else n * fact (n - 1))`
+
+```haskell
+fix (\fact n -> if n == 1 then 1 else n * fact (n - 1)) 3
+
+(\fact n -> if n == 1 then 1 else n * fact (n - 1)) fix (\fact n -> if n == 1 then 1 else n * fact (n - 1)) 3
+
+n -> if n == 1 then 1 else n * (fix (\fact n -> if n == 1 then 1 else n * fact (n - 1))) (n - 1) 3
+
+if 3 == 1 then 1 else 3 * (fix (\fact n -> if n == 1 then 1 else n * fact (n - 1))) 2
+
+3 * (fix (\fact n -> if n == 1 then 1 else n * fact (n - 1))) 2
+
+3 * (\fact n -> if n == 1 then 1 else n * fact (n - 1)) (fix (\fact n -> if n == 1 then 1 else n * fact (n - 1))) 2
+
+3 * n -> if n == 1 then 1 else n * (fix (\fact n -> if n == 1 then 1 else n * fact (n - 1))) (n - 1) 2
+
+3 * if 2 == 1 then 1 else 2 * (fix (\fact n -> if n == 1 then 1 else n * fact (n - 1))) 1
+
+3 * 2 * (fix (\fact n -> if n == 1 then 1 else n * fact (n - 1))) 1
+
+3 * 2 * (\fact n -> if n == 1 then 1 else n * fact (n - 1)) (fix (\fact n -> if n == 1 then 1 else n * fact (n - 1))) 1
+
+3 * 2 * n -> if n == 1 then 1 else n * (fix (\fact n -> if n == 1 then 1 else n * fact (n - 1))) 1
+
+3 * 2 * if 1 == 1 then 1 else 1 * (fix (\fact n -> if n == 1 then 1 else n * fact (n - 1)))
+
+3 * 2 * 1
+```
+
+In eager languages, the presence of `fix` would lead to infinite evaluation, but since Haskell is lazy, each application of `fact` will be evaluated before the construct recurses, allowing it to stop whenever the `n == 1` base case is reached.
+
+todo: add something about the Z combiantor defined in the book.
+
+**Why did we use a primitive if in the definition of g, instead of the Church-boolean test function on Church booleans? Show how to define the factorial function in terms of test rather than if.**
+
+Because `realeq` returns real booleans. If we want to use `test`, we should use the `equal` function defined previously:
+
+`g = λfct. λn. test (equal n c0) c1 (times n (fct (prd n)))`
+
+**Define a function churchnat that converts a primitive natural number into the corresponding Church numeral**
+
+`g = λfct. λn. if (iszero n) then z else s (fct (pred n))`
+
+`churchnat = λn. λs. λz. (fix g) n`
+
+**Use fix and the encoding of lists to write a function that sums lists of Church numerals**
+
+Suppose `isnil` returns real booleans:
+
+`g = λfct. λl. if isnil l then c0 else plus (head l) (fct (tail l))`
+
+`sum = λl. λc. λn. (fix g) l`
+
+### Formalities
+
+#### Syntax
+
+V - set of countable variable names
+
+T - set of terms
+
+1. &forall; x &isin; V then x &isin; T
+
+2. if t1 &isin; T and x &isin; V, then λx. t1 &isin; T
+
+3. if t1, t2 &isin; T, then t1 t2 &isin; T
+
+FV - set of free variables
+
+FV(x) = { x }
+
+FV(λx. t1) = FV(t1) \ { x }
+
+FV(t1 t2) = FV(t1) &cup; FV(t2)
+
+#### Substitution
+
+Substitution is generally straight-forward - matching free variables get replaced by their substitutes. The problem arises when working with abstractions & bound variables. We don't want to substitute bound variables for one, and we don't want to substitute free variables *for* bound variables either.
+
+Since the names of bound variables do not matter (meaning that they can be renamed), we can treat substitution as a total function:
+
+[x -> s]x = s
+
+[x -> s]y = y, when x != y
+
+[x -> s]λy. t = λy. [x -> s]t, when x != y and y &notin; FV(s)
+
+[x -> s]t1 t2 = [x -> s]t1 [x -> s]t2
+
+**Call by value: only outermost redexes whose right-hand side has already been reduced can be reduced**
+
+id (id (λz. id z))     | #2
+id (λz. id z)          | #3
+λz. id z
+
+Syntax
+```
+t ::=
+  x
+  λx. t
+  t t
+
+v ::=
+  λx. t
+```
+
+Evaluation
+```
+   t1 -> t1'
+---------------
+t1 t2 -> t1' t2
+
+   t2 -> t2'
+---------------
+v1 t2 -> v1 t2'
+
+(λx. t12) v2 -> [x -> v2]t12
+```
+
+**Full beta-reduction: any redex can be reduced**
+
+Syntax
+```
+t ::=
+  x
+  λx. t
+  t t
+
+v ::=                                            
+  λx. t
+```
+
+Evaluation
+```
+   t1 -> t1'
+---------------
+t1 t2 -> t1' t2
+
+   t2 -> t2'
+---------------
+t1 t2 -> t1 t2'
+
+      t -> t'
+-------------------
+(λx. t) -> (λx. t')
+
+(λx. t12) t2 -> [x -> t2]t12
+```
+
+**Normal order: the leftmost outermost redex is reduced**
+
+Syntax
+```
+t ::=
+  x
+  λx. t
+  t t
+
+v ::=                                            
+  λx. t
+```
+
+Evaluation
+```
+   t1 -> t1'
+---------------
+t1 t2 -> t1' t2
+
+      t -> t'
+-------------------
+(λx. t) -> (λx. t')
+
+(λx. t12) t2 -> [x -> t2]t12
+```
+
+**Call by name: same as normal, with the addition that redexes within abstractions are not reduced**
+
+id (id (λz. id z))     | #2
+id (λz. id z)          | #2
+λz. id z
+
+Syntax
+```
+t ::=
+  x
+  λx. t
+  t t
+
+v ::=                                            
+  λx. t
+```
+
+Evaluation
+```
+   t1 -> t1'
+---------------
+t1 t2 -> t1' t2
+
+(λx. t12) t2 -> [x -> t2]t12
+```
+  
+
+**Previously, an alternative presentation of the operational
+semantics of booleans and arithmetic expressions was given in which stuck
+terms are defined to evaluate to a special constant wrong. Extend this semantics
+to λNB**
+
+todo
+
+**Previously, a "big-step" style of evaluation for
+arithmetic expressions was introduced, where the basic evaluation relation is "term t evaluates
+to final result v." Show how to formulate the evaluation rules for lambdaterms
+in the big-step style**

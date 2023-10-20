@@ -13,6 +13,11 @@ type S = Int -> Int
 type Z = Int
 type Church = S -> Z -> Int
 
+data N
+  = Z
+  | S N
+  deriving (Eq, Show)
+
 toChurch :: Int -> Church
 toChurch 0 = \s z -> z
 toChurch n = \s z -> (foldr' (.) id (replicate n s)) z
@@ -65,3 +70,16 @@ plus m n s z = m s (n s z)
 -- const times = m => n => m(plus(n))(zero);
 times :: Church -> Church -> Church
 times m n s = m (n s)
+
+y :: (a -> a) -> a
+y f = f (y f)
+
+length' :: [a] -> Int
+length' = y (\f xs ->
+  case xs of
+    [] -> 0
+    x:xs' -> 1 + f xs'
+  )
+
+churchnat :: Int -> Church
+churchnat n s z = y (\f n -> if n == 0 then z else s (f (n - 1))) n

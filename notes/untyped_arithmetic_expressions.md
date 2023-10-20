@@ -190,7 +190,7 @@ if t -> t' then t ->* t'
 
 &forall; t, t ->* t
 
-if t ->* t' and t' ->* t'' then t -* t''
+if t ->* t' and t' ->* t'' then t ->* t''
 
 ### 3.5.13
 
@@ -271,10 +271,44 @@ iszero bv
 
 The extension for the grammar introduces rules that lead to these terms being evaluated to `wrong`. Similarly, if one of the extension rules are to be evaluated, we can clearly see that the terms in the original grammar would be in a stuck state, so the two ways of handling stuck values is equivalent.
 
-3.5.17
+**Two styles of operational semantics are in
+common use. The one used in this book is called the small-step style, because
+the definition of the evaluation relation shows how individual steps of computation
+are used to rewrite a term, bit by bit, until it eventually becomes a
+value. On top of this, we define a multi-step evaluation relation that allows us
+to talk about terms evaluating (in many steps) to values. An alternative style, called big-step semantics (or sometimes natural semantics), directly formulates
+the notion of “this term evaluates to that final value,” written t ⇓ v. The
+big-step evaluation rules for our language of boolean and arithmetic expressions
+look like this:**
+
+```
+          v ⇓ v
+
+    t1 ⇓ true t2 ⇓ v2
+--------------------------
+if t1 then t2 else t3 ⇓ v2
+
+    t1 ⇓ false t3 ⇓ v3
+--------------------------
+if t1 then t2 else t3 ⇓ v3
+
+         t1 ⇓ nv1
+--------------------------
+    succ t1 ⇓ succ nv1
+
+         t1 ⇓ 0
+--------------------------
+       pred t1 ⇓ 0
+```
+
+**Show that the small-step and big-step semantics for this language coincide,
+i.e. t ->\* v iff t ⇓ v.**
 
 todo
 
-3.5.18
+**Suppose we want to change the evaluation strategy of our
+language so that the then and else branches of an if expression are evaluated
+(in that order) before the guard is evaluated. Show how the evaluation
+rules need to change to achieve this effect**
 
 todo

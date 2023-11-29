@@ -18,7 +18,10 @@ executable tapl
         Arith.Parser
         Arith.Syntax
         NamelessRep.Exercises
+        UntypedLC.Eval.SmallStep
         UntypedLC.Exercises
+        UntypedLC.Parser
+        UntypedLC.Syntax
         Common.Parser
     build-depends:    
         base ^>=4.16.4.0

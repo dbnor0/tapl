@@ -69,7 +69,4 @@ Indices of free variables follow after the ones of bound variables, which means 
 
 ↑2 (λ. 0 1 (λ. 0 1 2)) = (λ. 0 3 (λ. 0 1 4))
 
-###
-
-
 ## Evaluation

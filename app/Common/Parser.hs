@@ -48,3 +48,9 @@ parens = between (reserved "(") (reserved ")")
 
 backtrack :: [Parser a] -> Parser a
 backtrack = choice . (<$>) try
+
+many1 :: Parser a -> Parser [a]
+many1 p = do
+  x <- p
+  xs <- many p
+  return (x:xs)

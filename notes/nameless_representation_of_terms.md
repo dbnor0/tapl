@@ -69,4 +69,23 @@ Indices of free variables follow after the ones of bound variables, which means 
 
 ↑2 (λ. 0 1 (λ. 0 1 2)) = (λ. 0 3 (λ. 0 1 4))
 
+With shifting in place, substitution can now also be defined, in a similar manner to what we previously had, with the exception of abstractions, where we'll be using shifting:
+
+```
+[j -> s]k = s, j =  k
+[j -> s]k = k, j != k
+[j -> s]λ. t = λ. [j + 1 -> ↑(1)s]t
+[j -> s]t1 t2 = ([j -> s]t1 [j -> s]t2)d
+```
+
+We increment `j` and shift up the free variables of `s` for each abstraction we encounter. Since each abstraction introduces a new bound variables which in turn shifts all existing indices up by one, we need to do the same with our indices.
+
 ## Evaluation
+
+Only rule that changes is substitution:
+  - as previously noted, we need to shift the term we're currently substituting for by 1
+  - we need to shift the whole result of the substitution down by 1, to accomodate for using up the bound variable
+
+This yields:
+
+`(λx. t)v -> ↑(-1)([0 -> ↑(1)v]t)`

@@ -18,6 +18,11 @@ executable tapl
         Arith.Parser
         Arith.Syntax
         NamelessRep.Exercises
+        TypedArith.Eval.SmallStep
+        TypedArith.Interpreter
+        TypedArith.Parser
+        TypedArith.Syntax
+        TypedArith.Typecheck
         UntypedLC.Eval.SmallStep
         UntypedLC.Exercises
         UntypedLC.Parser

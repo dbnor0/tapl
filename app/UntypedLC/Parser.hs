@@ -12,23 +12,22 @@ import Text.Megaparsec
 import Prelude hiding (abs)
 import Data.Foldable (Foldable(foldr'))
 
-type Term = S.Term ParseInfo Text
+type Term = S.Term Text
 
 identifier :: Parser Text
 identifier = lexeme $ cons <$> satisfy isAlpha <*> takeWhileP Nothing isAlphaNum
 
 var :: Parser Term
-var = S.Var <$> getPos <*> identifier
+var = S.Var <$> identifier
 
 abs :: Parser Term
-abs = S.Abs <$> getPos <*> (reserved "@" *> identifier <* reserved ".") <*> term
+abs = S.Abs <$> (reserved "@" *> identifier <* reserved ".") <*> term
 
 app :: Parser Term
 app = do
-  p <- getPos
   t1 <- term'
   ts <- many1 term'
-  return $ foldl (S.App p) t1 ts
+  return $ foldl S.App t1 ts
 
 term' :: Parser Term
 term'

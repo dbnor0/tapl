@@ -23,6 +23,12 @@ executable tapl
         TypedArith.Parser
         TypedArith.Syntax
         TypedArith.Typecheck
+        TypedLC.Eval.Nameless
+        TypedLC.Eval.SmallStep
+        TypedLC.Interpreter
+        TypedLC.Parser
+        TypedLC.Syntax
+        TypedLC.Typecheck
         UntypedLC.Eval.SmallStep
         UntypedLC.Exercises
         UntypedLC.Parser
@@ -34,6 +40,7 @@ executable tapl
         , directory
         , megaparsec
         , mtl
+        , ordered-containers
         , text
     hs-source-dirs:   app
     default-language: Haskell2010

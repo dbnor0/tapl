@@ -2,9 +2,9 @@ module Main where
 
 import System.Directory
 
-import Arith.Interpreter
+import TypedLC.Interpreter
 
 main :: IO ()
 main = do
-  interpretSmallStep ".\\src\\arith\\arith"
+  interpret ".\\src\\typed\\typed"
 

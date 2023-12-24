@@ -10,6 +10,8 @@ import Text.Megaparsec
 import Text.Megaparsec.Char.Lexer qualified as P
 import Text.Megaparsec.Char qualified as P hiding (space)
 import Control.Monad
+import Text.Megaparsec.Char.Lexer hiding (lexeme)
+import Data.Functor
 
 type Parser a = Parsec Void Text a
 
@@ -54,3 +56,17 @@ many1 p = do
   x <- p
   xs <- many p
   return (x:xs)
+
+operator :: Text -> (a -> a -> a) -> Parser (a -> a -> a)
+operator opStr op = reserved opStr $> op
+
+chainr1 :: Parser a -> Parser (a -> a -> a) -> Parser a
+chainr1 p op = p >>= rest
+  where
+    rest x = do
+      maybeOp <- optional op
+      case maybeOp of
+        Nothing -> return x
+        Just f  -> do
+          y <- p
+          rest (f x y)

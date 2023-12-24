@@ -27,7 +27,10 @@ identifier = do
   return id
 
 primitive :: Parser S.Type
-primitive = reserved "Bool" $> S.BoolTy
+primitive = backtrack
+  [ reserved "Bool" $> S.BoolTy
+  , reserved "A" $> S.AtomTy
+  ]
 
 fn :: Parser S.Type
 fn = S.FnTy <$> type'' <*> (reserved "->" *> type')

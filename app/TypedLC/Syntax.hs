@@ -6,6 +6,7 @@ import Data.Text
 
 data Type
   = BoolTy
+  | AtomTy
   | FnTy Type Type
   deriving stock (Eq, Show)
 

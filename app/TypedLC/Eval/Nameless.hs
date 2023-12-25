@@ -40,6 +40,7 @@ toNameless t = runReader (removeNames t) (Env free [])
 
 removeNames :: Conv m => S.Term Text -> m (S.Term Int)
 removeNames (S.BoolT t) = return $ S.BoolT t
+removeNames S.UnitT = return S.UnitT
 removeNames (S.IfT c t1 t2) = do
   c' <- removeNames c
   t1' <- removeNames t1
@@ -66,6 +67,7 @@ lastIndexOf x xs = case elemIndices x xs of
 
 getFree :: GConv m Set.Set [] => S.Term Text -> m (Set.Set Text)
 getFree (S.BoolT _) = return Set.empty
+getFree S.UnitT = return Set.empty
 getFree (S.IfT c t1 t2) = do
   c' <- getFree c
   t1' <- getFree t1
@@ -86,6 +88,7 @@ getFree (S.AppT t1 t2) = do
 
 fromNameless :: Conv m => S.Term Int -> m (S.Term Text)
 fromNameless (S.BoolT b) = return $ S.BoolT b
+fromNameless S.UnitT = return S.UnitT
 fromNameless (S.IfT c t1 t2) = do
   c' <- fromNameless c
   t1' <- fromNameless t1

@@ -34,6 +34,7 @@ showT = pack . show
 
 typecheck :: TC m => S.Term Int -> m S.Type
 typecheck (S.BoolT _) = return S.BoolTy
+typecheck S.UnitT = return S.UnitTy
 typecheck (S.IfT c t1 t2) = do
   c' <- typecheck c
   when (c' /= S.BoolTy)

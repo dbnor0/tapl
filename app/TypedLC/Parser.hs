@@ -8,7 +8,7 @@ import Common.Parser
 import Data.Char
 import Data.Text hiding (foldl, elem)
 import Text.Megaparsec
-import Prelude hiding (abs)
+import Prelude hiding (abs, seq)
 import Data.Foldable (Foldable(foldr'))
 import Data.Functor
 import Control.Monad
@@ -17,19 +17,23 @@ type Term = S.Term Text
 type Exception = Text
 
 keywords :: [Text]
-keywords = ["if", "then", "else", "true", "false"]
+keywords = ["if", "then", "else", "true", "false", "unit"]
 
 identifier :: Parser Text
 identifier = do
   id <- lexeme $ cons <$> satisfy isAlpha <*> takeWhileP Nothing isAlphaNum
-  when (id `elem` keywords) 
+  when (id `elem` keywords)
     (fail "keyword")
   return id
+
+wildcard :: Parser Text
+wildcard = lexeme "_"
 
 primitive :: Parser S.Type
 primitive = backtrack
   [ reserved "Bool" $> S.BoolTy
   , reserved "A" $> S.AtomTy
+  , reserved "Unit" $> S.UnitTy
   ]
 
 fn :: Parser S.Type
@@ -51,6 +55,9 @@ type' = backtrack
 bool :: Parser Term
 bool = reserved "true" $> S.BoolT True <|> reserved "false" $> S.BoolT False
 
+unit :: Parser Term
+unit = reserved "unit" $> S.UnitT
+
 if' :: Parser Term
 if' = S.IfT <$> (reserved "if" *> term) <*> (reserved "then" *> term) <*> (reserved "else" *> term)
 
@@ -58,20 +65,41 @@ var :: Parser Term
 var = S.VarT <$> identifier
 
 abs :: Parser Term
-abs = S.AbsT <$> (reserved "@" *> identifier) <*> (reserved ":" *> type' <* reserved ".") <*> term
+abs = S.AbsT <$> (reserved "@" *> (identifier <|> wildcard)) <*> (reserved ":" *> type' <* reserved ".") <*> term
 
 app :: Parser Term
 app = do
-  t1 <- term'
-  ts <- many1 term'
+  t1 <- termNoApp
+  ts <- many1 termNoApp
   return $ foldl S.AppT t1 ts
 
-term' :: Parser Term
-term'
+termNoApp :: Parser Term
+termNoApp
   = backtrack
     [ abs
     , var
     , bool
+    , unit
+    , if'
+    , parens term
+    ]
+
+seq :: Parser Term
+seq = do
+  t <- termNoSeq
+  reserved ";"
+  ts <- sepBy termNoSeq (reserved ";")
+  return $ foldl roll t ts
+  where roll acc x = S.AppT (S.AbsT "_" S.UnitTy x) acc
+
+termNoSeq :: Parser Term
+termNoSeq
+  = backtrack
+    [ abs
+    , app
+    , var
+    , bool
+    , unit
     , if'
     , parens term
     ]
@@ -81,7 +109,9 @@ term
   = backtrack
     [ app
     , abs
+    , seq
     , bool
+    , unit
     , if'
     , var
     , parens term

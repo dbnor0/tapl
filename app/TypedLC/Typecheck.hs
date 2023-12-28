@@ -44,6 +44,11 @@ typecheck (S.IfT c t1 t2) = do
   when (t1' /= t2')
     (throwError $ "if branches must evaluate to the same type: " <> showT t1' <> " " <> showT t2')
   return t2'
+typecheck (S.AsT t ty) = do
+  t' <- typecheck t
+  when (t' /= ty)
+    (throwError $ "cannot ascribe " <> showT t' <> " to " <> showT ty)
+  return ty
 typecheck (S.VarT x) = do
   env <- ask
   case lookup x env of

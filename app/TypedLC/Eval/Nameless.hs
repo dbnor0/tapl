@@ -46,6 +46,9 @@ removeNames (S.IfT c t1 t2) = do
   t1' <- removeNames t1
   t2' <- removeNames t2
   return $ S.IfT c' t1' t2'
+removeNames (S.AsT t ty) = do
+  t' <- removeNames t
+  return $ S.AsT t' ty
 removeNames (S.VarT x) = do
   env <- asks total
   case lastIndexOf x env of
@@ -73,6 +76,7 @@ getFree (S.IfT c t1 t2) = do
   t1' <- getFree t1
   t2' <- getFree t2
   return $ c' <> t1' <> t2'
+getFree (S.AsT t _) = getFree t
 getFree (S.VarT x) = do
   env <- ask
   if not $ x `elem'` env then
@@ -94,6 +98,9 @@ fromNameless (S.IfT c t1 t2) = do
   t1' <- fromNameless t1
   t2' <- fromNameless t2
   return $ S.IfT c' t1' t2'
+fromNameless (S.AsT t ty) = do
+  t' <- fromNameless t
+  return $ S.AsT t' ty
 fromNameless (S.VarT x) = do
   env <- asks total
   return $ S.VarT $ reverse env !! x

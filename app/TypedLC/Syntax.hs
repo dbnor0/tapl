@@ -15,6 +15,7 @@ data Term n
   = BoolT Bool
   | UnitT
   | IfT (Term n) (Term n) (Term n)
+  | AsT (Term n) Type
   | VarT n
   | AbsT Text Type (Term n)
   | AppT (Term n) (Term n)

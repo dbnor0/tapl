@@ -13,7 +13,7 @@ import Control.Monad
 import Text.Megaparsec.Char.Lexer hiding (lexeme)
 import Data.Functor
 
-type Parser a = Parsec Void Text a
+type Parser = Parsec Void Text
 
 type SourceFile = String
 type Line = Int

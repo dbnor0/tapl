@@ -19,7 +19,7 @@ type Term = S.Term Text
 type Exception = Text
 
 keywords :: [Text]
-keywords = ["if", "then", "else", "true", "false", "unit", "as"]
+keywords = ["if", "then", "else", "true", "false", "unit", "as", "let", "in"]
 
 identifier :: Parser Text
 identifier = do
@@ -74,6 +74,9 @@ as = S.AsT <$> factor' <*> (reserved "as" *> type')
 if' :: Parser Term
 if' = S.IfT <$> (reserved "if" *> term) <*> (reserved "then" *> term) <*> (reserved "else" *> term)
 
+let' :: Parser Term
+let' = S.LetT <$> (reserved "let" *> identifier) <*> (reserved "=" *> term) <*> (reserved "in" *> term)
+
 term :: Parser Term
 term = makeExprParser factor ops
 
@@ -84,6 +87,7 @@ factor = backtrack
     , unit
     , bool
     , if'
+    , let'
     , abs
     , parens term
     ]
@@ -95,6 +99,7 @@ factor' = backtrack
     , unit
     , bool
     , if'
+    , let'
     , abs
     ]
 

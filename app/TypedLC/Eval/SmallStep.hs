@@ -9,7 +9,7 @@ module TypedLC.Eval.SmallStep where
 import Data.Text hiding (last, length, reverse)
 import TypedLC.Syntax qualified as S
 import Data.Map.Ordered
-import Control.Monad.Except (Except, MonadError)
+import Control.Monad.Except (Except, MonadError, catchError)
 import Control.Monad.State
 
 type Exception = Text
@@ -19,6 +19,12 @@ eval t =
   case eval' t of
     Left _ -> t
     Right t' -> eval t'
+
+trace :: S.Term Int -> [S.Term Int]
+trace t =
+  case eval' t of
+    Left _ -> [t]
+    Right t' -> t' : trace t'
 
 eval' :: S.Term Int -> Either Exception (S.Term Int)
 eval' (S.IfT (S.BoolT True) t1 _) = return t1
@@ -30,6 +36,10 @@ eval' (S.AsT t _) = return t
 eval' (S.AppT (S.AbsT x _ t) v@(S.AbsT {})) = return $ substTerm v t
 eval' (S.AppT (S.AbsT x _ t) v@(S.BoolT _)) = return $ substTerm v t
 eval' (S.AppT (S.AbsT x _ t) v@S.UnitT) = return $ substTerm v t
+eval' (S.LetT x t1 t2) = do
+  case eval' t1 of
+    Left _ -> return $ substTerm t1 t2
+    Right t1' -> return $ substTerm t1' t2
 eval' (S.AppT S.UnitT t) = return t
 eval' x@(S.AppT t1 t2) =
   if isVal t1 then do
@@ -47,6 +57,7 @@ substTerm s t = shiftTerm (subst 0 (shiftTerm s 1) t) (-1)
         go c x S.UnitT = S.UnitT
         go c x (S.IfT c' t1 t2) = S.IfT (go c x c') (go c x t1) (go c x t2)
         go c x (S.AsT t ty) = S.AsT (go c x t) ty
+        go c x (S.LetT x' t1 t2) = S.LetT x' (go c x t1) (go (c + 1) x t2)
         go c x (S.VarT x') = if x' == x + c then shiftTerm s c else S.VarT x'
         go c x (S.AbsT x' ty t') = S.AbsT x' ty (go (c + 1) x t')
         go c x (S.AppT t1' t2') = S.AppT (go c x t1') (go c x t2')
@@ -57,6 +68,7 @@ shiftTerm t d = go 0 t
         go c S.UnitT = S.UnitT
         go c (S.IfT c' t1 t2) = S.IfT (go c c') (go c t1) (go c t2)
         go c (S.AsT t ty) = S.AsT (go c t) ty
+        go c (S.LetT x t1 t2) = S.LetT x (go c t1) (go (c + 1) t2)
         go c (S.VarT x) =
           if x >= c then
             S.VarT (x + d)

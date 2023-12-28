@@ -49,6 +49,10 @@ typecheck (S.AsT t ty) = do
   when (t' /= ty)
     (throwError $ "cannot ascribe " <> showT t' <> " to " <> showT ty)
   return ty
+typecheck (S.LetT x t1 t2) = do
+  ty <- typecheck t1
+  local (bind ty) $ do
+    typecheck t2
 typecheck (S.VarT x) = do
   env <- ask
   case lookup x env of

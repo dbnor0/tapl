@@ -20,8 +20,9 @@ interpret fp = do
       let free = Set.elems $ runReader (getFree t) (Env Set.empty [])
           nameless = toNameless t
           tc = runReader (runExceptT (typecheck nameless)) (mkEnv (length free))
-      print $ runReader (fromNameless nameless) (Env free [])
+      print $ "Nameless: " <> show nameless
+      print $ "Nameful: " <> show (runReader (fromNameless nameless) (Env free []))
       case tc of
         Left err -> print err
         Right _ -> print $ runReader (fromNameless (eval nameless)) (Env free [])
-      
+

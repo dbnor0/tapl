@@ -1,0 +1,1 @@
+let and = (@x: Bool. (@y: Bool. if x then y else false)) in (@a: Bool. @b: Bool. if and a b then true else false) true true

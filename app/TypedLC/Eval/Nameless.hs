@@ -41,6 +41,10 @@ toNameless t = runReader (removeNames t) (Env free [])
 removeNames :: Conv m => S.Term Text -> m (S.Term Int)
 removeNames (S.BoolT t) = return $ S.BoolT t
 removeNames S.UnitT = return S.UnitT
+removeNames (S.NumT n) = return $ S.NumT n
+removeNames (S.TupleT ts) = do
+  ts' <- traverse removeNames ts
+  return $ S.TupleT ts'
 removeNames (S.IfT c t1 t2) = do
   c' <- removeNames c
   t1' <- removeNames t1
@@ -54,6 +58,14 @@ removeNames (S.LetT x t1 t2) = do
     t1' <- removeNames t1
     t2' <- removeNames t2
     return $ S.LetT x t1' t2'
+removeNames (S.ArithT op t1 t2) = do
+  t1' <- removeNames t1
+  t2' <- removeNames t2
+  return $ S.ArithT op t1' t2'
+removeNames (S.ProjectT t p) = do
+  t' <- removeNames t
+  p' <- removeNames p
+  return $ S.ProjectT t' p'
 removeNames (S.VarT x) = do
   env <- asks total
   case lastIndexOf x env of
@@ -76,6 +88,10 @@ lastIndexOf x xs = case elemIndices x xs of
 getFree :: GConv m Set.Set [] => S.Term Text -> m (Set.Set Text)
 getFree (S.BoolT _) = return Set.empty
 getFree S.UnitT = return Set.empty
+getFree (S.NumT _) = return Set.empty
+getFree (S.TupleT ts) = do
+  ts' <- traverse getFree ts
+  return $ mconcat ts'
 getFree (S.IfT c t1 t2) = do
   c' <- getFree c
   t1' <- getFree t1
@@ -87,6 +103,14 @@ getFree (S.LetT x t1 t2) =
     t1' <- getFree t1
     t2' <- getFree t2
     return $ t1' <> t2'
+getFree (S.ArithT _ t1 t2) = do
+  t1' <- getFree t1
+  t2' <- getFree t2
+  return $ t1' <> t2'
+getFree (S.ProjectT t p) = do
+  t' <- getFree t
+  p' <- getFree p
+  return $ t' <> p'
 getFree (S.VarT x) = do
   env <- ask
   if not $ x `elem'` env then
@@ -103,6 +127,10 @@ getFree (S.AppT t1 t2) = do
 fromNameless :: Conv m => S.Term Int -> m (S.Term Text)
 fromNameless (S.BoolT b) = return $ S.BoolT b
 fromNameless S.UnitT = return S.UnitT
+fromNameless (S.NumT n) = return $ S.NumT n
+fromNameless (S.TupleT ts) = do
+  ts' <- traverse fromNameless ts
+  return $ S.TupleT ts'
 fromNameless (S.IfT c t1 t2) = do
   c' <- fromNameless c
   t1' <- fromNameless t1
@@ -116,6 +144,14 @@ fromNameless (S.LetT x t1 t2) = do
     t1' <- fromNameless t1
     t2' <- fromNameless t2
     return $ S.LetT x t1' t2'
+fromNameless (S.ArithT op t1 t2) = do
+  t1' <- fromNameless t1
+  t2' <- fromNameless t2
+  return $ S.ArithT op t1' t2'
+fromNameless (S.ProjectT t p) = do
+  t' <- fromNameless t
+  p' <- fromNameless p
+  return $ S.ProjectT t' p'
 fromNameless (S.VarT x) = do
   env <- asks total
   return $ S.VarT $ reverse env !! x

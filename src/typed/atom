@@ -1,1 +1,1 @@
-@f: A -> A. @x: A. f (f x)
+@f: Atom -> Atom. @x: Atom. f (f x)

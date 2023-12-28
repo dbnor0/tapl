@@ -13,7 +13,7 @@ import Prelude hiding (abs, seq)
 import Data.Foldable (Foldable(foldr'))
 import Data.Functor
 import Control.Monad
-import Text.ParserCombinators.ReadP
+import Text.Megaparsec.Char.Lexer hiding (lexeme)
 
 type Term = S.Term Text
 type Exception = Text
@@ -34,12 +34,16 @@ wildcard = lexeme "_"
 primitive :: Parser S.Type
 primitive = backtrack
   [ reserved "Bool" $> S.BoolTy
-  , reserved "A" $> S.AtomTy
+  , reserved "Atom" $> S.AtomTy
   , reserved "Unit" $> S.UnitTy
+  , reserved "Num" $> S.NumTy
   ]
 
 fn :: Parser S.Type
 fn = S.FnTy <$> type'' <*> (reserved "->" *> type')
+
+tupleTy :: Parser S.Type
+tupleTy = S.TupleTy <$> between (reserved "{") (reserved "}") (sepBy type' (reserved ","))
 
 type'' :: Parser S.Type
 type'' = backtrack
@@ -50,9 +54,13 @@ type'' = backtrack
 type' :: Parser S.Type
 type' = backtrack
   [ fn
+  , tupleTy
   , primitive
   , parens type'
   ]
+
+num :: Parser Term
+num = S.NumT <$> lexeme decimal
 
 bool :: Parser Term
 bool = reserved "true" $> S.BoolT True <|> reserved "false" $> S.BoolT False
@@ -60,16 +68,27 @@ bool = reserved "true" $> S.BoolT True <|> reserved "false" $> S.BoolT False
 unit :: Parser Term
 unit = reserved "unit" $> S.UnitT
 
+tuple :: Parser Term
+tuple = S.TupleT <$> between (reserved "{") (reserved "}") (sepBy term (reserved ","))
+
 ops :: [[Operator Parser Term]]
 ops =
-    [ [ InfixL (reserved ";" $> (S.AppT . S.AbsT "_" S.UnitTy))
+    [ [ InfixL (reserved "." $> S.ProjectT) ]
+    ,
+      [ InfixL (reserved "*" $> S.ArithT S.Times)
+      , InfixL (reserved "/" $> S.ArithT S.Divide) 
+      ]
+    , [ InfixL (reserved "+" $> S.ArithT S.Plus)
+      , InfixL (reserved "-" $> S.ArithT S.Minus) 
+      ]
+    , [ InfixL (reserved ";" $> (S.AppT . S.AbsT "_" S.UnitTy))
       , InfixL app
       ]
     ]
     where app = pure S.AppT
 
 as :: Parser Term
-as = S.AsT <$> factor' <*> (reserved "as" *> type')
+as = S.AsT <$> ascribable <*> (reserved "as" *> type')
 
 if' :: Parser Term
 if' = S.IfT <$> (reserved "if" *> term) <*> (reserved "then" *> term) <*> (reserved "else" *> term)
@@ -86,18 +105,22 @@ factor = backtrack
     , var
     , unit
     , bool
+    , num
+    , tuple
     , if'
     , let'
     , abs
     , parens term
     ]
 
-factor' :: Parser Term
-factor' = backtrack
+ascribable :: Parser Term
+ascribable = backtrack
     [ parens term
     , var
     , unit
     , bool
+    , num
+    , tuple
     , if'
     , let'
     , abs

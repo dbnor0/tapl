@@ -1,0 +1,1 @@
+head [Bool] (tail [Bool] (cons [Bool] true, (cons [Bool] false, nil [Bool])))

@@ -41,6 +41,30 @@ typecheck (S.StringT _) = return S.StringTy
 typecheck (S.TupleT ts) = do
   tys <- traverse typecheck ts
   return $ S.TupleTy tys
+typecheck (S.NilT ty) = return $ S.ListTy ty
+typecheck (S.ConstT ty x xs) = do
+  x' <- typecheck x
+  when (x' /= ty)
+    (throwError $ "first argument of cons must have " <> showT ty <> " type")
+  xs' <- typecheck xs
+  when (xs' /= S.ListTy ty)
+    (throwError $ "second argument of cons must have List " <> showT ty <> " type")
+  return $ S.ListTy ty
+typecheck (S.IsNilT ty xs) = do
+  xs' <- typecheck xs
+  when (xs' /= S.ListTy ty)
+    (throwError $ "argument of isnil must have List " <> showT ty <> " type")
+  return S.BoolTy
+typecheck (S.HeadT ty xs) = do
+  xs' <- typecheck xs
+  when (xs' /= S.ListTy ty)
+    (throwError $ "argument of head must have List " <> showT ty <> " type")
+  return ty
+typecheck (S.TailT ty xs) = do
+  xs' <- typecheck xs
+  when (xs' /= S.ListTy ty)
+    (throwError $ "argument of tail must have List " <> showT ty <> " type")
+  return $ S.ListTy ty
 typecheck (S.IfT c t1 t2) = do
   c' <- typecheck c
   when (c' /= S.BoolTy)

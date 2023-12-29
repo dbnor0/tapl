@@ -66,6 +66,20 @@ removeNames (S.ProjectT t p) = do
   t' <- removeNames t
   p' <- removeNames p
   return $ S.ProjectT t' p'
+removeNames (S.NilT ty) = return $ S.NilT ty
+removeNames (S.ConstT ty x xs) = do
+  x' <- removeNames x
+  xs' <- removeNames xs
+  return $ S.ConstT ty x' xs'
+removeNames (S.IsNilT ty xs) = do
+  xs' <- removeNames xs
+  return $ S.IsNilT ty xs'
+removeNames (S.HeadT ty xs) = do
+  xs' <- removeNames xs
+  return $ S.HeadT ty xs'
+removeNames (S.TailT ty xs) = do
+  xs' <- removeNames xs
+  return $ S.TailT ty xs'
 removeNames (S.VarT x) = do
   env <- asks total
   case lastIndexOf x env of
@@ -111,6 +125,14 @@ getFree (S.ProjectT t p) = do
   t' <- getFree t
   p' <- getFree p
   return $ t' <> p'
+getFree (S.NilT _) = return Set.empty
+getFree (S.ConstT _ x xs) = do
+  x' <- getFree x
+  xs' <- getFree xs
+  return $ x' <> xs'
+getFree (S.IsNilT _ xs) = getFree xs
+getFree (S.HeadT _ xs) = getFree xs
+getFree (S.TailT _ xs) = getFree xs
 getFree (S.VarT x) = do
   env <- ask
   if not $ x `elem'` env then
@@ -152,6 +174,20 @@ fromNameless (S.ProjectT t p) = do
   t' <- fromNameless t
   p' <- fromNameless p
   return $ S.ProjectT t' p'
+fromNameless (S.NilT ty) = return $ S.NilT ty
+fromNameless (S.ConstT ty x xs) = do
+  x' <- fromNameless x
+  xs' <- fromNameless xs
+  return $ S.ConstT ty x' xs'
+fromNameless (S.IsNilT ty xs) = do
+  xs' <- fromNameless xs
+  return $ S.IsNilT ty xs'
+fromNameless (S.HeadT ty xs) = do
+  xs' <- fromNameless xs
+  return $ S.HeadT ty xs'
+fromNameless (S.TailT ty xs) = do
+  xs' <- fromNameless xs
+  return $ S.HeadT ty xs'
 fromNameless (S.VarT x) = do
   env <- asks total
   return $ S.VarT $ reverse env !! x

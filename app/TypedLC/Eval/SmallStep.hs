@@ -55,10 +55,29 @@ eval' (S.ArithT op t1 t2) = do
       return $ S.ArithT op t1 t2'
     Right t1' -> return $ S.ArithT op t1' t2
 eval' (S.ProjectT (S.TupleT ts) (S.NumT p)) = do
-  return $ ts !! p  
+  return $ ts !! p
 eval' (S.ProjectT t (S.NumT p)) = do
   t' <- eval' t
   return $ S.ProjectT t' (S.NumT p)
+eval' (S.ConstT ty x xs) = do
+  case eval' x of
+    Left _ -> do
+      xs' <- eval' xs
+      return $ S.ConstT ty x xs'
+    Right x' -> return $ S.ConstT ty x' xs
+eval' (S.IsNilT _ (S.NilT _)) = return $ S.BoolT True
+eval' (S.IsNilT _ (S.ConstT {})) = return $ S.BoolT False
+eval' (S.IsNilT ty xs) = do
+  xs' <- eval' xs
+  return $ S.IsNilT ty xs'
+eval' (S.HeadT _ (S.ConstT _ x _)) = return x
+eval' (S.HeadT ty xs) = do
+  xs' <- eval' xs
+  return $ S.HeadT ty xs'
+eval' (S.TailT _ (S.ConstT _ _ xs)) = return xs
+eval' (S.TailT ty xs) = do
+  xs' <- eval' xs
+  return $ S.TailT ty xs'
 eval' (S.AppT S.UnitT t) = return t
 eval' x@(S.AppT t1 t2) =
   if isVal t1 then do
@@ -76,6 +95,11 @@ substTerm s t = shiftTerm (subst 0 (shiftTerm s 1) t) (-1)
         go c x S.UnitT = S.UnitT
         go c x (S.NumT n) = S.NumT n
         go c x (S.TupleT ts) = S.TupleT ts
+        go c x (S.NilT ty) = S.NilT ty
+        go c x (S.ConstT ty x' xs) = S.ConstT ty (go c x x') (go c x xs)
+        go c x (S.IsNilT ty xs) = S.IsNilT ty (go c x xs)
+        go c x (S.HeadT ty xs) = S.HeadT ty (go c x xs)
+        go c x (S.TailT ty xs) = S.TailT ty (go c x xs)
         go c x (S.IfT c' t1 t2) = S.IfT (go c x c') (go c x t1) (go c x t2)
         go c x (S.AsT t ty) = S.AsT (go c x t) ty
         go c x (S.ArithT op t1 t2) = S.ArithT op (go c x t1)  (go c x t2)
@@ -91,6 +115,11 @@ shiftTerm t d = go 0 t
         go c S.UnitT = S.UnitT
         go c (S.NumT n) = S.NumT n
         go c (S.TupleT ts) = S.TupleT ts
+        go c (S.NilT ty) = S.NilT ty
+        go c (S.ConstT ty x xs) = S.ConstT ty (go c x) (go c xs)
+        go c (S.IsNilT ty xs) = S.IsNilT ty (go c xs)
+        go c (S.HeadT ty xs) = S.HeadT ty (go c xs)
+        go c (S.TailT ty xs) = S.TailT ty (go c xs)
         go c (S.IfT c' t1 t2) = S.IfT (go c c') (go c t1) (go c t2)
         go c (S.AsT t ty) = S.AsT (go c t) ty
         go c (S.LetT x t1 t2) = S.LetT x (go c t1) (go (c + 1) t2)

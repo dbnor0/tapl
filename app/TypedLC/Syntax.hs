@@ -12,6 +12,7 @@ data Type
   | UnitTy
   | FnTy Type Type
   | TupleTy [Type]
+  | ListTy Type
   deriving stock (Eq, Show)
 
 data ArithOp
@@ -27,6 +28,11 @@ data Term n
   | StringT String
   | TupleT [Term n]
   | UnitT
+  | NilT Type
+  | ConstT Type (Term n) (Term n)
+  | IsNilT Type (Term n)
+  | HeadT Type (Term n)
+  | TailT Type (Term n)
   | IfT (Term n) (Term n) (Term n)
   | AsT (Term n) Type
   | LetT Text (Term n) (Term n)

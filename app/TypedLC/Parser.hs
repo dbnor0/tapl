@@ -19,7 +19,7 @@ type Term = S.Term Text
 type Exception = Text
 
 keywords :: [Text]
-keywords = ["if", "then", "else", "true", "false", "unit", "as", "let", "in"]
+keywords = ["if", "then", "else", "true", "false", "unit", "as", "let", "in", "nil", "cons", "isnil", "head", "tail"]
 
 identifier :: Parser Text
 identifier = do
@@ -45,6 +45,9 @@ fn = S.FnTy <$> type'' <*> (reserved "->" *> type')
 tupleTy :: Parser S.Type
 tupleTy = S.TupleTy <$> between (reserved "{") (reserved "}") (sepBy type' (reserved ","))
 
+listTy :: Parser S.Type
+listTy = S.ListTy <$> (reserved "List" *> type')
+
 type'' :: Parser S.Type
 type'' = backtrack
   [ primitive
@@ -55,6 +58,7 @@ type' :: Parser S.Type
 type' = backtrack
   [ fn
   , tupleTy
+  , listTy
   , primitive
   , parens type'
   ]
@@ -70,6 +74,21 @@ unit = reserved "unit" $> S.UnitT
 
 tuple :: Parser Term
 tuple = S.TupleT <$> between (reserved "{") (reserved "}") (sepBy term (reserved ","))
+
+nil' :: Parser Term
+nil' = S.NilT <$> (reserved "nil" *> between (reserved "[") (reserved "]") type')
+
+cons' :: Parser Term
+cons' = S.ConstT <$> (reserved "cons" *> between (reserved "[") (reserved "]") type') <*> term <*> (reserved "," *> term)
+
+isnil :: Parser Term
+isnil = S.IsNilT <$> (reserved "isnil" *> between (reserved "[") (reserved "]") type') <*> term
+
+head' :: Parser Term
+head' = S.HeadT <$> (reserved "head" *> between (reserved "[") (reserved "]") type') <*> term
+
+tail' :: Parser Term
+tail' = S.TailT <$> (reserved "tail" *> between (reserved "[") (reserved "]") type') <*> term
 
 ops :: [[Operator Parser Term]]
 ops =
@@ -107,6 +126,11 @@ factor = backtrack
     , bool
     , num
     , tuple
+    , nil'
+    , cons'
+    , isnil
+    , head'
+    , tail'
     , if'
     , let'
     , abs
@@ -121,6 +145,11 @@ ascribable = backtrack
     , bool
     , num
     , tuple
+    , nil'
+    , cons'
+    , isnil
+    , head'
+    , tail'
     , if'
     , let'
     , abs

@@ -1,4 +1,6 @@
 {-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveAnyClass #-}
 
 module TypedLC.Syntax where
 
@@ -15,6 +17,22 @@ data Type
   | ListTy Type
   deriving stock (Eq, Show)
 
+data Literal n
+  = BoolL Bool
+  | NumL Int
+  | StringL String
+  | TupleL [Term n]
+  | NilL Type
+  | ConsL Type (Term n) (Term n)
+  | UnitL
+  deriving stock (Eq, Show)
+
+data ListOp n
+  = IsNil Type (Term n)
+  | Head Type (Term n)
+  | Tail Type (Term n)
+  deriving stock (Eq, Show)
+
 data ArithOp
   = Plus
   | Minus
@@ -23,22 +41,14 @@ data ArithOp
   deriving stock (Eq, Show)
 
 data Term n
-  = BoolT Bool
-  | NumT Int
-  | StringT String
-  | TupleT [Term n]
-  | UnitT
-  | NilT Type
-  | ConstT Type (Term n) (Term n)
-  | IsNilT Type (Term n)
-  | HeadT Type (Term n)
-  | TailT Type (Term n)
-  | IfT (Term n) (Term n) (Term n)
-  | AsT (Term n) Type
-  | LetT Text (Term n) (Term n)
-  | ProjectT (Term n) (Term n)
-  | ArithT ArithOp (Term n) (Term n)
+  = LitT (Literal n)
   | VarT n
+  | ArithT ArithOp (Term n) (Term n)
+  | ListT (ListOp n)
+  | ProjectT (Term n) (Term n)
+  | IfT (Term n) (Term n) (Term n)
+  | LetT Text (Term n) (Term n)
+  | AsT (Term n) Type
   | AbsT Text Type (Term n)
   | AppT (Term n) (Term n)
   deriving stock (Eq, Show)

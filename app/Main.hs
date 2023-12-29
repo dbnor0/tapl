@@ -6,5 +6,5 @@ import TypedLC.Interpreter
 
 main :: IO ()
 main = do
-  interpret ".\\src\\typed\\list"
+  interpret ".\\src\\typed\\let"
 

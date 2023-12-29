@@ -4,12 +4,12 @@ module TypedLC.Interpreter where
 import TypedLC.Parser
 import Data.Text.IO
 import Prelude hiding (readFile)
-import TypedLC.Eval.Nameless
 import qualified Data.Set as Set
 import Control.Monad.Reader
 import TypedLC.Typecheck
 import Control.Monad.Except
 import TypedLC.Eval.SmallStep
+import TypedLC.Eval.Nameless (freeVars, fromNameless, toNameless)
 
 interpret :: FilePath -> IO ()
 interpret fp = do
@@ -17,12 +17,11 @@ interpret fp = do
   case parse' src of
     Left err -> print "Error parsing"
     Right t -> do
-      let free = Set.elems $ runReader (getFree t) (Env Set.empty [])
+      let free = freeVars t
           nameless = toNameless t
-          tc = runReader (runExceptT (typecheck nameless)) (mkEnv (length free))
+          type' = tc nameless free
       print $ "Nameless: " <> show nameless
-      print $ "Nameful: " <> show (runReader (fromNameless nameless) (Env free []))
-      case tc of
+      print $ "Nameful: " <> show t
+      case type' of
         Left err -> print err
-        Right _ -> print $ runReader (fromNameless (eval nameless)) (Env free [])
-
+        Right _ -> print $ trace nameless

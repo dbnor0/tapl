@@ -16,14 +16,50 @@ import Control.Monad
 import Text.Megaparsec.Char.Lexer hiding (lexeme)
 
 type Term = S.Term Text
+type Literal = S.Literal Text
+type ListOp = S.ListOp Text
 type Exception = Text
 
+-- utils
+
+braces :: Parser a -> Parser a
+braces = between (reserved "{") (reserved "}")
+
+brackets :: Parser a -> Parser a
+brackets = between (reserved "[") (reserved "]")
+
+comma :: Parser ()
+comma = reserved ","
+
+period :: Parser ()
+period = reserved "."
+
+colon :: Parser ()
+colon = reserved ":"
+
+-- keywords & identifiers
+
 keywords :: [Text]
-keywords = ["if", "then", "else", "true", "false", "unit", "as", "let", "in", "nil", "cons", "isnil", "head", "tail"]
+keywords = 
+  [ "if"
+  , "then"
+  , "else"
+  , "true"
+  , "false"
+  , "unit"
+  , "as"
+  , "let"
+  , "in"
+  , "nil"
+  , "cons"
+  , "isnil"
+  , "head"
+  , "tail"
+  ]
 
 identifier :: Parser Text
 identifier = do
-  id <- lexeme $ cons <$> Text.Megaparsec.satisfy isAlpha <*> takeWhileP Nothing isAlphaNum
+  id <- lexeme $ cons <$> satisfy isAlpha <*> takeWhileP Nothing isAlphaNum
   when (id `elem` keywords)
     (fail "keyword")
   return id
@@ -31,74 +67,91 @@ identifier = do
 wildcard :: Parser Text
 wildcard = lexeme "_"
 
-primitive :: Parser S.Type
-primitive = backtrack
+-- types
+
+primitiveType :: Parser S.Type
+primitiveType = backtrack
   [ reserved "Bool" $> S.BoolTy
   , reserved "Atom" $> S.AtomTy
   , reserved "Unit" $> S.UnitTy
   , reserved "Num" $> S.NumTy
   ]
 
-fn :: Parser S.Type
-fn = S.FnTy <$> type'' <*> (reserved "->" *> type')
+fnType :: Parser S.Type
+fnType = S.FnTy <$> nonFnType <*> (reserved "->" *> type')
 
-tupleTy :: Parser S.Type
-tupleTy = S.TupleTy <$> between (reserved "{") (reserved "}") (sepBy type' (reserved ","))
+tupleType :: Parser S.Type
+tupleType = S.TupleTy <$> braces (sepBy type' comma)
 
-listTy :: Parser S.Type
-listTy = S.ListTy <$> (reserved "List" *> type')
+listType :: Parser S.Type
+listType = S.ListTy <$> (reserved "List" *> type')
 
-type'' :: Parser S.Type
-type'' = backtrack
-  [ primitive
+nonFnType :: Parser S.Type
+nonFnType = backtrack
+  [ primitiveType
+  , tupleType
+  , listType
   , parens type'
   ]
 
 type' :: Parser S.Type
 type' = backtrack
-  [ fn
-  , tupleTy
-  , listTy
-  , primitive
+  [ fnType
+  , primitiveType
+  , tupleType
+  , listType
   , parens type'
   ]
 
-num :: Parser Term
-num = S.NumT <$> lexeme decimal
+listAnnotation :: Parser S.Type
+listAnnotation = brackets type'
 
-bool :: Parser Term
-bool = reserved "true" $> S.BoolT True <|> reserved "false" $> S.BoolT False
+-- literals
 
-unit :: Parser Term
-unit = reserved "unit" $> S.UnitT
+boolLit :: Parser Literal
+boolLit =   reserved "true" $> S.BoolL True 
+        <|> reserved "false" $> S.BoolL False
 
-tuple :: Parser Term
-tuple = S.TupleT <$> between (reserved "{") (reserved "}") (sepBy term (reserved ","))
+numLit :: Parser Literal
+numLit = S.NumL <$> lexeme decimal
 
-nil' :: Parser Term
-nil' = S.NilT <$> (reserved "nil" *> between (reserved "[") (reserved "]") type')
+-- string
 
-cons' :: Parser Term
-cons' = S.ConstT <$> (reserved "cons" *> between (reserved "[") (reserved "]") type') <*> term <*> (reserved "," *> term)
+tupleLit :: Parser Literal
+tupleLit = S.TupleL <$> braces (sepBy term comma)
 
-isnil :: Parser Term
-isnil = S.IsNilT <$> (reserved "isnil" *> between (reserved "[") (reserved "]") type') <*> term
+nilLit :: Parser Literal
+nilLit = S.NilL <$> (reserved "nil" *> brackets type')
 
-head' :: Parser Term
-head' = S.HeadT <$> (reserved "head" *> between (reserved "[") (reserved "]") type') <*> term
+consLit :: Parser Literal
+consLit =   S.ConsL 
+        <$> (reserved "cons" *> brackets type') 
+        <*> term 
+        <*> (comma *> term)
 
-tail' :: Parser Term
-tail' = S.TailT <$> (reserved "tail" *> between (reserved "[") (reserved "]") type') <*> term
+unitLit :: Parser Literal
+unitLit = reserved "unit" $> S.UnitL
+
+-- operators
+
+isnil :: Parser ListOp
+isnil = S.IsNil <$> (reserved "isnil" *> brackets type') <*> term
+
+head' :: Parser ListOp
+head' = S.Head <$> (reserved "head" *> brackets type') <*> term
+
+tail' :: Parser ListOp
+tail' = S.Tail <$> (reserved "tail" *> brackets type') <*> term
 
 ops :: [[Operator Parser Term]]
 ops =
     [ [ InfixL (reserved "." $> S.ProjectT) ]
     ,
       [ InfixL (reserved "*" $> S.ArithT S.Times)
-      , InfixL (reserved "/" $> S.ArithT S.Divide) 
+      , InfixL (reserved "/" $> S.ArithT S.Divide)
       ]
     , [ InfixL (reserved "+" $> S.ArithT S.Plus)
-      , InfixL (reserved "-" $> S.ArithT S.Minus) 
+      , InfixL (reserved "-" $> S.ArithT S.Minus)
       ]
     , [ InfixL (reserved ";" $> (S.AppT . S.AbsT "_" S.UnitTy))
       , InfixL app
@@ -106,63 +159,79 @@ ops =
     ]
     where app = pure S.AppT
 
-as :: Parser Term
-as = S.AsT <$> ascribable <*> (reserved "as" *> type')
-
-if' :: Parser Term
-if' = S.IfT <$> (reserved "if" *> term) <*> (reserved "then" *> term) <*> (reserved "else" *> term)
-
-let' :: Parser Term
-let' = S.LetT <$> (reserved "let" *> identifier) <*> (reserved "=" *> term) <*> (reserved "in" *> term)
+-- terms
 
 term :: Parser Term
 term = makeExprParser factor ops
 
+litTerm :: Parser Term
+litTerm = S.LitT <$> backtrack
+  [ boolLit
+  , numLit
+  , tupleLit
+  , nilLit
+  , consLit
+  , unitLit
+  ]
+
+varTerm :: Parser Term
+varTerm = S.VarT <$> identifier
+
+listTerm :: Parser Term
+listTerm = S.ListT <$> backtrack
+  [ isnil
+  , head'
+  , tail'
+  ]
+
+ifTerm :: Parser Term
+ifTerm =   S.IfT
+       <$> (reserved "if" *> term)
+       <*> (reserved "then" *> term)
+       <*> (reserved "else" *> term)
+
+letTerm :: Parser Term
+letTerm =   S.LetT
+        <$> (reserved "let" *> identifier)
+        <*> (reserved "=" *> term)
+        <*> (reserved "in" *> term)
+
+ascriptionTerm :: Parser Term
+ascriptionTerm = S.AsT <$> ascribable <*> (reserved "as" *> type')
+
+absTerm :: Parser Term
+absTerm =   S.AbsT 
+        <$> (reserved "@" *> binder) 
+        <*> (colon *> type' <* period) 
+        <*> term
+  where binder = identifier <|> wildcard
+
 factor :: Parser Term
 factor = backtrack
-    [ as
-    , var
-    , unit
-    , bool
-    , num
-    , tuple
-    , nil'
-    , cons'
-    , isnil
-    , head'
-    , tail'
-    , if'
-    , let'
-    , abs
+    [ ascriptionTerm
+    , varTerm
+    , litTerm
+    , listTerm
+    , ifTerm
+    , letTerm
+    , absTerm
     , parens term
     ]
 
+-- auxiliaries
+
 ascribable :: Parser Term
 ascribable = backtrack
-    [ parens term
-    , var
-    , unit
-    , bool
-    , num
-    , tuple
-    , nil'
-    , cons'
-    , isnil
-    , head'
-    , tail'
-    , if'
-    , let'
-    , abs
+    [ varTerm
+    , litTerm
+    , listTerm
+    , ifTerm
+    , letTerm
+    , absTerm
     ]
-
-var :: Parser Term
-var = S.VarT <$> identifier
-
-abs :: Parser Term
-abs = S.AbsT <$> (reserved "@" *> (identifier <|> wildcard)) <*> (reserved ":" *> type' <* reserved ".") <*> term
 
 parse' :: Text -> Either Exception Term
 parse' s =
   case runParser term "" s of
-    Left err -> Left "Error parsing expression"
+    Left err -> Left "Error parsing term"
     Right t -> Right t

@@ -47,6 +47,7 @@ keywords =
   , "true"
   , "false"
   , "unit"
+  , "cast"
   , "as"
   , "let"
   , "in"
@@ -153,7 +154,7 @@ ops =
     , [ InfixL (reserved "+" $> S.ArithT S.Plus)
       , InfixL (reserved "-" $> S.ArithT S.Minus)
       ]
-    , [ InfixL (reserved ";" $> (S.AppT . S.AbsT "_" S.UnitTy))
+    , [ InfixL (reserved ";" $> (\t1 t2 -> S.AppT (S.AbsT "_" S.UnitTy t2) t1))
       , InfixL app
       ]
     ]
@@ -197,7 +198,7 @@ letTerm =   S.LetT
         <*> (reserved "in" *> term)
 
 ascriptionTerm :: Parser Term
-ascriptionTerm = S.AsT <$> ascribable <*> (reserved "as" *> type')
+ascriptionTerm = S.AsT <$> (reserved "cast" *> term) <*> (reserved "as" *> type')
 
 absTerm :: Parser Term
 absTerm =   S.AbsT 
@@ -219,16 +220,6 @@ factor = backtrack
     ]
 
 -- auxiliaries
-
-ascribable :: Parser Term
-ascribable = backtrack
-    [ varTerm
-    , litTerm
-    , listTerm
-    , ifTerm
-    , letTerm
-    , absTerm
-    ]
 
 parse' :: Text -> Either Exception Term
 parse' s =

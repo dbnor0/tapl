@@ -1,1 +1,1 @@
-(unit; (@x: Bool. (@_: Bool. x))) true
+(unit; (@x: Bool. (@_: Num. x))) true 3

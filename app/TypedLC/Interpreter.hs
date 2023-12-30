@@ -24,4 +24,4 @@ interpret fp = do
       print $ "Nameful: " <> show t
       case type' of
         Left err -> print err
-        Right _ -> print $ trace nameless
+        Right _ -> print $ eval nameless

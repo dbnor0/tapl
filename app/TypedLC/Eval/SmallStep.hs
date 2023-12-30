@@ -35,7 +35,7 @@ eval' (S.IfT c t1 t2) = do
   c' <- eval' c
   return $ S.IfT c' t1 t2
 eval' (S.AsT t _) = return t
-eval' (S.AppT (S.AbsT x _ t) v) | isVal v = return $ substTerm t v
+eval' (S.AppT (S.AbsT x _ t) v) | isVal v = return $ substTerm v t
 eval' (S.LetT x t1 t2) = do
   case eval' t1 of
     Left _ -> return $ substTerm t1 t2
@@ -102,12 +102,14 @@ substTerm s t = shiftTerm (subst 0 (shiftTerm s 1) t) (-1)
         go c x (S.VarT x') = if x' == x + c then shiftTerm s c else S.VarT x'
         go c x (S.AbsT x' ty t') = S.AbsT x' ty (go (c + 1) x t')
         go c x (S.AppT t1' t2') = S.AppT (go c x t1') (go c x t2')
+
         goLit c x (S.BoolL b) = S.BoolL b
         goLit c x (S.NumL n) = S.NumL n
         goLit c x (S.StringL s) = S.StringL s
         goLit c x (S.NilL ty) = S.NilL ty
         goLit c x (S.ConsL ty x' xs) = S.ConsL ty (go c x x') (go c x xs)
         goLit c x S.UnitL = S.UnitL
+        
         goList c x (S.IsNil ty xs) = S.IsNil ty (go c x xs)
         goList c x (S.Head ty xs) = S.Head ty (go c x xs)
         goList c x (S.Tail ty xs) = S.Tail ty (go c x xs)
@@ -126,12 +128,14 @@ shiftTerm t d = go 0 t
         go c (S.AsT t ty) = S.AsT (go c t) ty
         go c (S.AbsT x ty t) = S.AbsT x ty (go (c + 1) t)
         go c (S.AppT t1 t2) = S.AppT (go c t1) (go c t2)
+
         goLit c (S.BoolL b) = S.BoolL b
         goLit c (S.NumL n) = S.NumL n
         goLit c (S.StringL s) = S.StringL s
         goLit c (S.NilL ty) = S.NilL ty
         goLit c (S.ConsL ty x xs) = S.ConsL ty (go c x) (go c xs)
         goLit c S.UnitL = S.UnitL
+
         goList c (S.IsNil ty xs) = S.IsNil ty (go c xs)
         goList c (S.Head ty xs) = S.Head ty (go c xs)
         goList c (S.Tail ty xs) = S.Tail ty (go c xs)

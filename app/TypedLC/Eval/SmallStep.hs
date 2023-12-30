@@ -6,11 +6,11 @@
 
 module TypedLC.Eval.SmallStep where
 
-import Data.Text hiding (last, length, reverse)
+import Data.Text hiding (last, length, reverse, zip)
 import TypedLC.Syntax qualified as S
-import Data.Map.Ordered
 import Control.Monad.Except (Except, MonadError, catchError)
 import Control.Monad.State
+import Data.Map
 
 type Exception = Text
 
@@ -54,6 +54,8 @@ eval' (S.ArithT op t1 t2) = do
     Right t1' -> return $ S.ArithT op t1' t2
 eval' (S.ProjectT (S.LitT (S.TupleL ts)) p) = do
   return $ ts !! (read (unpack p) :: Int)
+eval' (S.ProjectT (S.LitT (S.RecordL fs)) p) = do
+  return $ fs ! p
 eval' (S.ProjectT t p) = do
   t' <- eval' t
   return $ S.ProjectT t' p
@@ -106,6 +108,8 @@ substTerm s t = shiftTerm (subst 0 (shiftTerm s 1) t) (-1)
         goLit c x (S.BoolL b) = S.BoolL b
         goLit c x (S.NumL n) = S.NumL n
         goLit c x (S.StringL s) = S.StringL s
+        goLit c x (S.TupleL ts) = S.TupleL (go c x <$> ts)
+        goLit c x (S.RecordL fs) = S.RecordL (fromList $ zip (keys fs) (go c x <$> elems fs))
         goLit c x (S.NilL ty) = S.NilL ty
         goLit c x (S.ConsL ty x' xs) = S.ConsL ty (go c x x') (go c x xs)
         goLit c x S.UnitL = S.UnitL
@@ -132,6 +136,8 @@ shiftTerm t d = go 0 t
         goLit c (S.BoolL b) = S.BoolL b
         goLit c (S.NumL n) = S.NumL n
         goLit c (S.StringL s) = S.StringL s
+        goLit c (S.TupleL ts) = S.TupleL (go c <$> ts)
+        goLit c (S.RecordL fs) = S.RecordL (fromList $ zip (keys fs) (go c <$> elems fs))
         goLit c (S.NilL ty) = S.NilL ty
         goLit c (S.ConsL ty x xs) = S.ConsL ty (go c x) (go c xs)
         goLit c S.UnitL = S.UnitL

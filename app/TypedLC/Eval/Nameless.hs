@@ -5,7 +5,7 @@
 
 module TypedLC.Eval.Nameless where
 
-import Data.Text hiding (length, last, reverse, elem)
+import Data.Text hiding (length, last, reverse, elem, zip)
 import Data.Set qualified as Set
 import TypedLC.Syntax qualified as S
 import Data.List
@@ -13,6 +13,7 @@ import Control.Monad.RWS (MonadReader (ask))
 import Control.Monad.Reader
 import Data.Foldable (elem)
 import qualified GHC.Generics as Set
+import Data.Map
 
 data GEnv f b = Env
   { free :: f Text
@@ -96,6 +97,9 @@ removeNamesLit (S.StringL s) = return $ S.StringL s
 removeNamesLit (S.TupleL ts) = do
   ts' <- traverse removeNames ts
   return $ S.TupleL ts'
+removeNamesLit (S.RecordL fs) = do
+  ts' <- traverse removeNames (elems fs)
+  return $ S.RecordL $ fromList $ zip (keys fs) ts'
 removeNamesLit (S.NilL ty) = return $ S.NilL ty
 removeNamesLit (S.ConsL ty x xs) = do
   x' <- removeNames x
@@ -165,6 +169,9 @@ assignNamesLit (S.StringL s) = return $ S.StringL s
 assignNamesLit (S.TupleL ts) = do
   ts' <- traverse assignNames ts
   return $ S.TupleL ts'
+assignNamesLit (S.RecordL fs) = do
+  ts' <- traverse assignNames (elems fs)
+  return $ S.RecordL $ fromList $ zip (keys fs) ts'
 assignNamesLit (S.NilL ty) = return $ S.NilL ty
 assignNamesLit (S.ConsL ty x xs) = do
   x' <- assignNames x
@@ -226,6 +233,9 @@ getFreeLit (S.NumL n) = return Set.empty
 getFreeLit (S.StringL s) = return Set.empty
 getFreeLit (S.TupleL ts) = do
   ts' <- traverse getFree ts
+  return $ mconcat ts'
+getFreeLit (S.RecordL fs) = do
+  ts' <- traverse getFree (elems fs)
   return $ mconcat ts'
 getFreeLit (S.NilL ty) = return Set.empty
 getFreeLit (S.ConsL ty x xs) = do

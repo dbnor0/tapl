@@ -7,7 +7,7 @@
 
 module TypedLC.Typecheck where
 
-import Data.Text hiding (zip, length)
+import Data.Text hiding (zip, length, elem, length)
 import Data.Map
 import TypedLC.Syntax qualified as S
 import Control.Monad.Reader
@@ -60,14 +60,18 @@ typecheck (S.ArithT op t1 t2) = do
 typecheck (S.ListT op) = typecheckListOp op
 typecheck (S.ProjectT t p) = do
   t' <- typecheck t
-  let p' = readMaybe (unpack p) :: Maybe Int
   case (t', p') of
     (S.TupleTy tys, Just p') ->
       if p' < 0 || p' > length tys then
         throwError "Invalid left operand for projection"
-      else 
+      else
         return $ tys !! p'
+    (S.RecordTy fs, Nothing) -> do
+      unless (p `elem` keys fs)
+        (throwError $ "Invalid selector " <> p <> " for type " <> showT t')
+      return $ fs ! p
     _ -> throwError "Invalid left operand for projection"
+  where p' = readMaybe (unpack p) :: Maybe Int
 typecheck (S.IfT c t1 t2) = do
   c' <- typecheck c
   when (c' /= S.BoolTy)
@@ -107,6 +111,9 @@ typecheckLit (S.StringL _) = return S.StringTy
 typecheckLit (S.TupleL ts) = do
   tys <- traverse typecheck ts
   return $ S.TupleTy tys
+typecheckLit (S.RecordL ts) = do
+  tys <- traverse typecheck (elems ts)
+  return $ S.RecordTy (fromList $ zip (keys ts) tys)
 typecheckLit (S.NilL ty) = return $ S.ListTy ty
 typecheckLit (S.ConsL ty x xs) = do
   x' <- typecheck x

@@ -3,6 +3,7 @@
 module TypedLC.Syntax where
 
 import Data.Text
+import Data.Map
 
 data Type
   = BoolTy
@@ -12,6 +13,7 @@ data Type
   | UnitTy
   | FnTy Type Type
   | TupleTy [Type]
+  | RecordTy (Map Text Type)
   | ListTy Type
   deriving stock (Eq, Show)
 
@@ -20,6 +22,7 @@ data Literal n
   | NumL Int
   | StringL String
   | TupleL [Term n]
+  | RecordL (Map Text (Term n))
   | NilL Type
   | ConsL Type (Term n) (Term n)
   | UnitL

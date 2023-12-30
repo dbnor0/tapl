@@ -1,0 +1,1 @@
+{ test = { x = { true, { lol = 100 - 10, kek = {} } }, y = 2 }, no = false }.test.x.1.lol

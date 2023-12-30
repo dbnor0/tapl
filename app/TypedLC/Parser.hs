@@ -7,13 +7,14 @@ import Control.Monad.Combinators.Expr(Operator(..), makeExprParser)
 import TypedLC.Syntax qualified as S
 import Common.Parser
 import Data.Char
-import Data.Text hiding (foldl, elem)
+import Data.Text hiding (foldl, foldl', elem)
 import Text.Megaparsec
 import Prelude hiding (abs, seq)
-import Data.Foldable (Foldable(foldr'))
+import Data.Foldable (Foldable(foldr', foldl'))
 import Data.Functor
 import Control.Monad
 import Text.Megaparsec.Char.Lexer hiding (lexeme)
+import Data.Map hiding (foldr', foldl')
 
 type Term = S.Term Text
 type Literal = S.Literal Text
@@ -87,6 +88,10 @@ fnType = S.FnTy <$> nonFnType <*> (reserved "->" *> type')
 tupleType :: Parser S.Type
 tupleType = S.TupleTy <$> braces (sepBy type' comma)
 
+recordType :: Parser S.Type
+recordType = S.RecordTy . fromList <$> braces (sepBy field comma)
+  where field = (,) <$> (identifier <* colon) <*> type'
+
 listType :: Parser S.Type
 listType = S.ListTy <$> (reserved "List" *> type')
 
@@ -95,6 +100,7 @@ nonFnType = backtrack
   [ primitiveType
   , tupleType
   , listType
+  , recordType
   , parens type'
   ]
 
@@ -103,6 +109,7 @@ type' = backtrack
   [ fnType
   , primitiveType
   , tupleType
+  , recordType
   , listType
   , parens type'
   ]
@@ -123,6 +130,10 @@ numLit = S.NumL <$> lexeme decimal
 
 tupleLit :: Parser Literal
 tupleLit = S.TupleL <$> braces (sepBy term comma)
+
+recordLit :: Parser Literal
+recordLit = S.RecordL . fromList <$> braces (sepBy field comma)
+  where field = (,) <$> (identifier <* reserved "=") <*> term
 
 nilLit :: Parser Literal
 nilLit = S.NilL <$> (reserved "nil" *> brackets type')
@@ -171,6 +182,7 @@ litTerm = S.LitT <$> backtrack
   [ boolLit
   , numLit
   , tupleLit
+  , recordLit
   , nilLit
   , consLit
   , unitLit
@@ -190,7 +202,7 @@ projectTerm :: Parser Term
 projectTerm = do
   t <- projectable <* period
   ps <- sepBy selector period
-  return $ foldr' (flip S.ProjectT) t ps
+  return $ foldl' S.ProjectT t ps
 
 ifTerm :: Parser Term
 ifTerm =   S.IfT

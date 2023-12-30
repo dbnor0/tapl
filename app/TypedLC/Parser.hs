@@ -40,7 +40,7 @@ colon = reserved ":"
 -- keywords & identifiers
 
 keywords :: [Text]
-keywords = 
+keywords =
   [ "if"
   , "then"
   , "else"
@@ -64,6 +64,9 @@ identifier = do
   when (id `elem` keywords)
     (fail "keyword")
   return id
+
+selector :: Parser Text
+selector = pack . show <$> lexeme decimal <|> identifier
 
 wildcard :: Parser Text
 wildcard = lexeme "_"
@@ -110,7 +113,7 @@ listAnnotation = brackets type'
 -- literals
 
 boolLit :: Parser Literal
-boolLit =   reserved "true" $> S.BoolL True 
+boolLit =   reserved "true" $> S.BoolL True
         <|> reserved "false" $> S.BoolL False
 
 numLit :: Parser Literal
@@ -125,9 +128,9 @@ nilLit :: Parser Literal
 nilLit = S.NilL <$> (reserved "nil" *> brackets type')
 
 consLit :: Parser Literal
-consLit =   S.ConsL 
-        <$> (reserved "cons" *> brackets type') 
-        <*> term 
+consLit =   S.ConsL
+        <$> (reserved "cons" *> brackets type')
+        <*> term
         <*> (comma *> term)
 
 unitLit :: Parser Literal
@@ -146,9 +149,7 @@ tail' = S.Tail <$> (reserved "tail" *> brackets type') <*> term
 
 ops :: [[Operator Parser Term]]
 ops =
-    [ [ InfixL (reserved "." $> S.ProjectT) ]
-    ,
-      [ InfixL (reserved "*" $> S.ArithT S.Times)
+    [ [ InfixL (reserved "*" $> S.ArithT S.Times)
       , InfixL (reserved "/" $> S.ArithT S.Divide)
       ]
     , [ InfixL (reserved "+" $> S.ArithT S.Plus)
@@ -185,6 +186,12 @@ listTerm = S.ListT <$> backtrack
   , tail'
   ]
 
+projectTerm :: Parser Term
+projectTerm = do
+  t <- projectable <* period
+  ps <- sepBy selector period
+  return $ foldr' (flip S.ProjectT) t ps
+
 ifTerm :: Parser Term
 ifTerm =   S.IfT
        <$> (reserved "if" *> term)
@@ -201,9 +208,9 @@ ascriptionTerm :: Parser Term
 ascriptionTerm = S.AsT <$> (reserved "cast" *> term) <*> (reserved "as" *> type')
 
 absTerm :: Parser Term
-absTerm =   S.AbsT 
-        <$> (reserved "@" *> binder) 
-        <*> (colon *> type' <* period) 
+absTerm =   S.AbsT
+        <$> (reserved "@" *> binder)
+        <*> (colon *> type' <* period)
         <*> term
   where binder = identifier <|> wildcard
 
@@ -211,6 +218,7 @@ factor :: Parser Term
 factor = backtrack
     [ ascriptionTerm
     , varTerm
+    , projectTerm
     , litTerm
     , listTerm
     , ifTerm
@@ -220,6 +228,18 @@ factor = backtrack
     ]
 
 -- auxiliaries
+
+projectable :: Parser Term
+projectable = backtrack
+    [ ascriptionTerm
+    , varTerm
+    , litTerm
+    , listTerm
+    , ifTerm
+    , letTerm
+    , absTerm
+    , parens term
+    ]
 
 parse' :: Text -> Either Exception Term
 parse' s =

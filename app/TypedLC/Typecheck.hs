@@ -13,7 +13,7 @@ import TypedLC.Syntax qualified as S
 import Control.Monad.Reader
 import Control.Monad.Except
 import Prelude hiding (lookup)
-import Text.Read
+import Text.Read (readMaybe)
 
 
 type Env = Map Int (Maybe S.Type)
@@ -58,14 +58,15 @@ typecheck (S.ArithT op t1 t2) = do
     (throwError $ showT op <> " requires its second operand to have Num type")
   return t2'
 typecheck (S.ListT op) = typecheckListOp op
-typecheck (S.ProjectT t (S.LitT (S.NumL p))) = do
+typecheck (S.ProjectT t p) = do
   t' <- typecheck t
-  case t' of
-    S.TupleTy tys -> 
-      if p < 0 || p > length tys then
+  let p' = readMaybe (unpack p) :: Maybe Int
+  case (t', p') of
+    (S.TupleTy tys, Just p') ->
+      if p' < 0 || p' > length tys then
         throwError "Invalid left operand for projection"
       else 
-        return $ tys !! p
+        return $ tys !! p'
     _ -> throwError "Invalid left operand for projection"
 typecheck (S.IfT c t1 t2) = do
   c' <- typecheck c

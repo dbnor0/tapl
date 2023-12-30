@@ -52,11 +52,11 @@ eval' (S.ArithT op t1 t2) = do
       t2' <- eval' t2
       return $ S.ArithT op t1 t2'
     Right t1' -> return $ S.ArithT op t1' t2
-eval' (S.ProjectT (S.LitT (S.TupleL ts)) (S.LitT (S.NumL p))) = do
-  return $ ts !! p
-eval' (S.ProjectT t (S.LitT (S.NumL p))) = do
+eval' (S.ProjectT (S.LitT (S.TupleL ts)) p) = do
+  return $ ts !! (read (unpack p) :: Int)
+eval' (S.ProjectT t p) = do
   t' <- eval' t
-  return $ S.ProjectT t' (S.LitT (S.NumL p))
+  return $ S.ProjectT t' p
 eval' (S.LitT (S.ConsL ty x xs)) = do
   case eval' x of
     Left _ -> do
@@ -109,7 +109,7 @@ substTerm s t = shiftTerm (subst 0 (shiftTerm s 1) t) (-1)
         goLit c x (S.NilL ty) = S.NilL ty
         goLit c x (S.ConsL ty x' xs) = S.ConsL ty (go c x x') (go c x xs)
         goLit c x S.UnitL = S.UnitL
-        
+
         goList c x (S.IsNil ty xs) = S.IsNil ty (go c x xs)
         goList c x (S.Head ty xs) = S.Head ty (go c x xs)
         goList c x (S.Tail ty xs) = S.Tail ty (go c x xs)

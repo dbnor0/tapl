@@ -1,6 +1,4 @@
 {-# LANGUAGE DerivingStrategies #-}
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE DeriveAnyClass #-}
 
 module TypedLC.Syntax where
 
@@ -45,7 +43,7 @@ data Term n
   | VarT n
   | ArithT ArithOp (Term n) (Term n)
   | ListT (ListOp n)
-  | ProjectT (Term n) (Term n)
+  | ProjectT (Term n) Text
   | IfT (Term n) (Term n) (Term n)
   | LetT Text (Term n) (Term n)
   | AsT (Term n) Type

@@ -66,8 +66,7 @@ removeNames (S.ListT op) = do
   return $ S.ListT op'
 removeNames (S.ProjectT t p) = do
   t' <- removeNames t
-  p' <- removeNames p
-  return $ S.ProjectT t' p'
+  return $ S.ProjectT t' p
 removeNames (S.IfT c t1 t2) = do
   c' <- removeNames c
   t1' <- removeNames t1
@@ -143,8 +142,7 @@ assignNames (S.ArithT op t1 t2) = do
   return $ S.ArithT op t1' t2'
 assignNames (S.ProjectT t p) = do
   t' <- assignNames t
-  p' <- assignNames p
-  return $ S.ProjectT t' p'
+  return $ S.ProjectT t' p
 assignNames (S.ListT op) = do
   op' <- assignNamesList op
   return $ S.ListT op'
@@ -207,10 +205,7 @@ getFree (S.ArithT _ t1 t2) = do
   t1' <- getFree t1
   t2' <- getFree t2
   return $ t1' <> t2'
-getFree (S.ProjectT t p) = do
-  t' <- getFree t
-  p' <- getFree p
-  return $ t' <> p'
+getFree (S.ProjectT t p) = getFree t
 getFree (S.ListT op) = getFreeList op
 getFree (S.VarT x) = do
   env <- ask

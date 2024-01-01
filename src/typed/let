@@ -1,1 +1,1 @@
-let b = false in let and = @x: Bool. @y: Bool. if x then y else false in if (and b) true then 1 else 2
+let x = 10 in let y = x in x - y

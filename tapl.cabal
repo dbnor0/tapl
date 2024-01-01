@@ -17,6 +17,13 @@ executable tapl
         Arith.Interpreter
         Arith.Parser
         Arith.Syntax
+        Common.Parser
+        Effectful.Eval.Nameless
+        Effectful.Eval.SmallStep
+        Effectful.Interpreter
+        Effectful.Parser
+        Effectful.Syntax
+        Effectful.Typecheck
         NamelessRep.Exercises
         TypedArith.Eval.SmallStep
         TypedArith.Interpreter
@@ -33,7 +40,6 @@ executable tapl
         UntypedLC.Exercises
         UntypedLC.Parser
         UntypedLC.Syntax
-        Common.Parser
     build-depends:    
         base ^>=4.16.4.0
         , containers

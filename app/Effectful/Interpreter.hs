@@ -1,15 +1,13 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module TypedLC.Interpreter where
-import TypedLC.Parser
+module Effectful.Interpreter where
+import Effectful.Parser
 import Data.Text.IO
 import Prelude hiding (readFile)
-import qualified Data.Set as Set
-import Control.Monad.Reader
-import TypedLC.Typecheck
-import Control.Monad.Except
-import TypedLC.Eval.SmallStep
-import TypedLC.Eval.Nameless (freeVars, fromNameless, toNameless)
+import Effectful.Eval.Nameless
+import Effectful.Typecheck
+import Effectful.Eval.SmallStep
+
 
 interpret :: FilePath -> IO ()
 interpret fp = do
@@ -24,4 +22,4 @@ interpret fp = do
       print $ "Nameful: " <> show t
       case type' of
         Left err -> print $ "Typechecking error: " <> err
-        Right _ -> print $ eval nameless
+        Right _ -> print $ exec nameless

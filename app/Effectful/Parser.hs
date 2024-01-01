@@ -1,10 +1,10 @@
 {-# LANGUAGE ImportQualifiedPost #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module TypedLC.Parser where
+module Effectful.Parser where
 
 import Control.Monad.Combinators.Expr(Operator(..), makeExprParser)
-import TypedLC.Syntax qualified as S
+import Effectful.Syntax qualified as S
 import Common.Parser
 import Data.Char
 import Data.Text hiding (foldl, foldl', elem)
@@ -18,7 +18,6 @@ import Data.Map hiding (foldr', foldl')
 
 type Term = S.Term Text
 type Literal = S.Literal Text
-type ListOp = S.ListOp Text
 type Exception = Text
 
 -- utils
@@ -52,11 +51,7 @@ keywords =
   , "as"
   , "let"
   , "in"
-  , "nil"
-  , "cons"
-  , "isnil"
-  , "head"
-  , "tail"
+  , "ref"
   ]
 
 identifier :: Parser Text
@@ -77,7 +72,6 @@ wildcard = lexeme "_"
 primitiveType :: Parser S.Type
 primitiveType = backtrack
   [ reserved "Bool" $> S.BoolTy
-  , reserved "Atom" $> S.AtomTy
   , reserved "Unit" $> S.UnitTy
   , reserved "Num" $> S.NumTy
   ]
@@ -85,22 +79,18 @@ primitiveType = backtrack
 fnType :: Parser S.Type
 fnType = S.FnTy <$> nonFnType <*> (reserved "->" *> type')
 
-tupleType :: Parser S.Type
-tupleType = S.TupleTy <$> braces (sepBy type' comma)
-
 recordType :: Parser S.Type
 recordType = S.RecordTy . fromList <$> braces (sepBy field comma)
   where field = (,) <$> (identifier <* colon) <*> type'
 
-listType :: Parser S.Type
-listType = S.ListTy <$> (reserved "List" *> type')
+refType :: Parser S.Type
+refType = S.RefTy <$> (reserved "Ref" *> type')
 
 nonFnType :: Parser S.Type
 nonFnType = backtrack
   [ primitiveType
-  , tupleType
-  , listType
   , recordType
+  , refType
   , parens type'
   ]
 
@@ -108,9 +98,8 @@ type' :: Parser S.Type
 type' = backtrack
   [ fnType
   , primitiveType
-  , tupleType
   , recordType
-  , listType
+  , refType
   , parens type'
   ]
 
@@ -123,46 +112,25 @@ boolLit =   reserved "true" $> S.BoolL True
 numLit :: Parser Literal
 numLit = S.NumL <$> lexeme decimal
 
--- string
-
-tupleLit :: Parser Literal
-tupleLit = S.TupleL <$> braces (sepBy term comma)
-
 recordLit :: Parser Literal
 recordLit = S.RecordL . fromList <$> braces (sepBy field comma)
   where field = (,) <$> (identifier <* reserved "=") <*> term
-
-nilLit :: Parser Literal
-nilLit = S.NilL <$> (reserved "nil" *> brackets type')
-
-consLit :: Parser Literal
-consLit =   S.ConsL
-        <$> (reserved "cons" *> brackets type')
-        <*> term
-        <*> (comma *> term)
 
 unitLit :: Parser Literal
 unitLit = reserved "unit" $> S.UnitL
 
 -- operators
 
-isnil :: Parser ListOp
-isnil = S.IsNil <$> (reserved "isnil" *> brackets type') <*> term
-
-head' :: Parser ListOp
-head' = S.Head <$> (reserved "head" *> brackets type') <*> term
-
-tail' :: Parser ListOp
-tail' = S.Tail <$> (reserved "tail" *> brackets type') <*> term
-
 ops :: [[Operator Parser Term]]
 ops =
-    [ [ InfixL (reserved "*" $> S.ArithT S.Times)
+    [ [ Prefix (reserved "!" $> S.DerefT) ]
+    , [ InfixL (reserved "*" $> S.ArithT S.Times)
       , InfixL (reserved "/" $> S.ArithT S.Divide)
       ]
     , [ InfixL (reserved "+" $> S.ArithT S.Plus)
       , InfixL (reserved "-" $> S.ArithT S.Minus)
       ]
+    , [ InfixL (reserved ":=" $> S.AssignT) ]
     , [ InfixL (reserved ";" $> (\t1 t2 -> S.AppT (S.AbsT "_" S.UnitTy t2) t1))
       , InfixL app
       ]
@@ -178,22 +146,12 @@ litTerm :: Parser Term
 litTerm = S.LitT <$> backtrack
   [ boolLit
   , numLit
-  , tupleLit
   , recordLit
-  , nilLit
-  , consLit
   , unitLit
   ]
 
 varTerm :: Parser Term
 varTerm = S.VarT <$> identifier
-
-listTerm :: Parser Term
-listTerm = S.ListT <$> backtrack
-  [ isnil
-  , head'
-  , tail'
-  ]
 
 projectTerm :: Parser Term
 projectTerm = do
@@ -216,6 +174,9 @@ letTerm =   S.LetT
 ascriptionTerm :: Parser Term
 ascriptionTerm = S.AsT <$> (reserved "cast" *> term) <*> (reserved "as" *> type')
 
+refTerm :: Parser Term
+refTerm = S.RefT <$> (reserved "ref" *> term)
+
 absTerm :: Parser Term
 absTerm =   S.AbsT
         <$> (reserved "@" *> binder)
@@ -225,11 +186,11 @@ absTerm =   S.AbsT
 
 factor :: Parser Term
 factor = backtrack
-    [ ascriptionTerm
+    [ refTerm
+    , ascriptionTerm
     , varTerm
     , projectTerm
     , litTerm
-    , listTerm
     , ifTerm
     , letTerm
     , absTerm
@@ -243,9 +204,9 @@ projectable = backtrack
     [ ascriptionTerm
     , varTerm
     , litTerm
-    , listTerm
     , ifTerm
     , letTerm
+    , refTerm
     , absTerm
     , parens term
     ]

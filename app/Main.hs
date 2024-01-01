@@ -2,9 +2,9 @@ module Main where
 
 import System.Directory
 
-import TypedLC.Interpreter
+import Effectful.Interpreter
 
 main :: IO ()
 main = do
-  interpret ".\\src\\typed\\record"
+  interpret ".\\src\\effectful\\r2r"
 

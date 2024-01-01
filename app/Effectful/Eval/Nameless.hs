@@ -1,13 +1,12 @@
 {-# LANGUAGE ImportQualifiedPost #-}
-{-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE ConstraintKinds #-}
 {-# LANGUAGE FlexibleContexts #-}
 
-module TypedLC.Eval.Nameless where
+module Effectful.Eval.Nameless where
 
 import Data.Text hiding (length, last, reverse, elem, zip)
 import Data.Set qualified as Set
-import TypedLC.Syntax qualified as S
+import Effectful.Syntax qualified as S
 import Data.List
 import Control.Monad.RWS (MonadReader (ask))
 import Control.Monad.Reader
@@ -61,9 +60,6 @@ removeNames (S.ArithT op t1 t2) = do
   t1' <- removeNames t1
   t2' <- removeNames t2
   return $ S.ArithT op t1' t2'
-removeNames (S.ListT op) = do
-  op' <- removeNamesList op
-  return $ S.ListT op'
 removeNames (S.ProjectT t p) = do
   t' <- removeNames t
   return $ S.ProjectT t' p
@@ -73,10 +69,20 @@ removeNames (S.IfT c t1 t2) = do
   t2' <- removeNames t2
   return $ S.IfT c' t1' t2'
 removeNames (S.LetT x t1 t2) = do
+  t1' <- removeNames t1
   local (bind [x]) $ do
-    t1' <- removeNames t1
     t2' <- removeNames t2
     return $ S.LetT x t1' t2'
+removeNames (S.RefT t) = do
+  t' <- removeNames t
+  return $ S.RefT t'
+removeNames (S.DerefT t) = do
+  t' <- removeNames t
+  return $ S.DerefT t'
+removeNames (S.AssignT t1 t2) = do
+  t1' <- removeNames t1
+  t2' <- removeNames t2
+  return $ S.AssignT t1' t2'
 removeNames (S.AsT t ty) = do
   t' <- removeNames t
   return $ S.AsT t' ty
@@ -92,30 +98,12 @@ removeNames (S.AppT t1 t2) = do
 removeNamesLit :: Conv m => S.Literal Text -> m (S.Literal Int)
 removeNamesLit (S.BoolL b) = return $ S.BoolL b
 removeNamesLit (S.NumL n) = return $ S.NumL n
-removeNamesLit (S.StringL s) = return $ S.StringL s
-removeNamesLit (S.TupleL ts) = do
-  ts' <- traverse removeNames ts
-  return $ S.TupleL ts'
 removeNamesLit (S.RecordL fs) = do
   ts' <- traverse removeNames (elems fs)
   return $ S.RecordL $ fromList $ zip (keys fs) ts'
-removeNamesLit (S.NilL ty) = return $ S.NilL ty
-removeNamesLit (S.ConsL ty x xs) = do
-  x' <- removeNames x
-  xs' <- removeNames xs
-  return $ S.ConsL ty x' xs'
 removeNamesLit S.UnitL = return S.UnitL
+removeNamesLit (S.Location l) = return $ S.Location l
 
-removeNamesList :: Conv m => S.ListOp Text -> m (S.ListOp Int)
-removeNamesList (S.IsNil ty xs) = do
-  xs' <- removeNames xs
-  return $ S.IsNil ty xs'
-removeNamesList (S.Head ty xs) = do
-  xs' <- removeNames xs
-  return $ S.Head ty xs'
-removeNamesList (S.Tail ty xs) = do
-  xs' <- removeNames xs
-  return $ S.Tail ty xs'
 
 -- conversion from nameless form
 
@@ -139,6 +127,16 @@ assignNames (S.LetT x t1 t2) = do
     t1' <- assignNames t1
     t2' <- assignNames t2
     return $ S.LetT x t1' t2'
+assignNames (S.RefT t) = do
+  t' <- assignNames t
+  return $ S.RefT t'
+assignNames (S.DerefT t) = do
+  t' <- assignNames t
+  return $ S.DerefT t'
+assignNames (S.AssignT t1 t2) = do
+  t1' <- assignNames t1
+  t2' <- assignNames t2
+  return $ S.AssignT t1' t2'
 assignNames (S.ArithT op t1 t2) = do
   t1' <- assignNames t1
   t2' <- assignNames t2
@@ -146,9 +144,6 @@ assignNames (S.ArithT op t1 t2) = do
 assignNames (S.ProjectT t p) = do
   t' <- assignNames t
   return $ S.ProjectT t' p
-assignNames (S.ListT op) = do
-  op' <- assignNamesList op
-  return $ S.ListT op'
 assignNames (S.VarT x) = do
   env <- asks total
   return $ S.VarT $ reverse env !! x
@@ -164,30 +159,11 @@ assignNames (S.AppT t1 t2) = do
 assignNamesLit :: Conv m => S.Literal Int -> m (S.Literal Text)
 assignNamesLit (S.BoolL b) = return $ S.BoolL b
 assignNamesLit (S.NumL n) = return $ S.NumL n
-assignNamesLit (S.StringL s) = return $ S.StringL s
-assignNamesLit (S.TupleL ts) = do
-  ts' <- traverse assignNames ts
-  return $ S.TupleL ts'
 assignNamesLit (S.RecordL fs) = do
   ts' <- traverse assignNames (elems fs)
   return $ S.RecordL $ fromList $ zip (keys fs) ts'
-assignNamesLit (S.NilL ty) = return $ S.NilL ty
-assignNamesLit (S.ConsL ty x xs) = do
-  x' <- assignNames x
-  xs' <- assignNames xs
-  return $ S.ConsL ty x' xs'
 assignNamesLit S.UnitL = return S.UnitL
-
-assignNamesList :: Conv m => S.ListOp Int -> m (S.ListOp Text)
-assignNamesList (S.IsNil ty xs) = do
-  xs' <- assignNames xs
-  return $ S.IsNil ty xs'
-assignNamesList (S.Head ty xs) = do
-  xs' <- assignNames xs
-  return $ S.Head ty xs'
-assignNamesList (S.Tail ty xs) = do
-  xs' <- assignNames xs
-  return $ S.Tail ty xs'
+assignNamesLit (S.Location l) = return $ S.Location l
 
 -- getting free variables from a term
 
@@ -207,12 +183,17 @@ getFree (S.LetT x t1 t2) =
     t1' <- getFree t1
     t2' <- getFree t2
     return $ t1' <> t2'
+getFree (S.RefT t) = getFree t
+getFree (S.DerefT t) = getFree t
+getFree (S.AssignT t1 t2) = do
+  t1' <- getFree t1
+  t2' <- getFree t2
+  return $ t1' <> t2'
 getFree (S.ArithT _ t1 t2) = do
   t1' <- getFree t1
   t2' <- getFree t2
   return $ t1' <> t2'
 getFree (S.ProjectT t p) = getFree t
-getFree (S.ListT op) = getFreeList op
 getFree (S.VarT x) = do
   env <- ask
   if not $ x `elem'` env then
@@ -229,21 +210,8 @@ getFree (S.AppT t1 t2) = do
 getFreeLit :: GConv m Set.Set [] => S.Literal Text -> m (Set.Set Text)
 getFreeLit (S.BoolL b) = return Set.empty
 getFreeLit (S.NumL n) = return Set.empty
-getFreeLit (S.StringL s) = return Set.empty
-getFreeLit (S.TupleL ts) = do
-  ts' <- traverse getFree ts
-  return $ mconcat ts'
 getFreeLit (S.RecordL fs) = do
   ts' <- traverse getFree (elems fs)
   return $ mconcat ts'
-getFreeLit (S.NilL ty) = return Set.empty
-getFreeLit (S.ConsL ty x xs) = do
-  x' <- getFree x
-  xs' <- getFree xs
-  return $ x' <> xs'
 getFreeLit S.UnitL = return Set.empty
-
-getFreeList :: GConv m Set.Set [] => S.ListOp Text -> m (Set.Set Text)
-getFreeList (S.IsNil ty xs) = getFree xs
-getFreeList (S.Head ty xs) = getFree xs
-getFreeList (S.Tail ty xs) = getFree xs
+getFreeLit (S.Location _) = return Set.empty
